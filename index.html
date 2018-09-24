@@ -1,0 +1,57 @@
+---
+# Feel free to add content and custom Front Matter to this file.
+# To modify the layout, see https://jekyllrb.com/docs/themes/#overriding-theme-defaults
+
+layout: default
+---
+<script>
+    {% assign fichiers = site.collections | where: 'label', 'files' | first %}
+    window.chansons = [
+        {% for fichier in fichiers.files %}{
+            title: {{ fichier.basename | jsonify }},
+            name: {{ fichier.name | jsonify }},
+            slug: {{ fichier.basename | slugify: 'latin' | jsonify }},
+            date: {{ fichier.modified_time | date_to_xmlschema | jsonify }},
+            path: {{ fichier.path | jsonify }},
+            extname: {{fichier.extname | jsonify}},
+        }{% unless forloop.last %}, {% endunless %}{% endfor %}
+    ]
+</script>
+<div id="navbar" class="tc page fixed top-0 left-0 right-0 bg-white z-9999 shadow-4 no-print">
+    <div class="flex justify-between mw8 center">
+        <a class="link dark-gray hover-gray no-underline flex items-center pa3 f4" href="#">
+            {{site.title}}</a>
+        <div class="pa2 flex-auto items-center relative">
+            <input class="pa2 b--light-gray b--solid br-pill w-100 relative" type="text" name="search" id="searchbar"
+                placeholder="Rechercher...">
+            <a id="clean-search" class="link absolute code b f3 gray bottom-1 right-1-5 dim" href="#">&times;</a>
+        </div>
+        <div class="flex pa3 items-center transition-transform" id="hamburger">
+            <a class="f4 link dib dark-gray dim rotate-90 helvetica" href="#">|||</a>
+        </div>
+    </div>
+</div>
+<header id="header" class="vh-50 vh-100-p dt w-100">
+    <div class="dtc v-mid tc bg-yellow">
+        <h1 class="f1 f-headline-ns "><a class="link black" href="#">{{site.title}}</a></h1>
+        <h2 class="f5 normal">Un recueil de chansons.<br />
+            À l'initiative de <em>Chiffonie</em>.<br />
+            Keur sur elle <code class="code">&lt;3</code></h2>
+        <h3 class="f6">Auteur : <span class="normal i"><a href="//stardis.blue">stardisblue</a></span></h3>
+    </div>
+</header>
+<nav class=" ph4 pt5 w5 w-100-p pa0-p h-100 h-auto-p fixed relative-p top-0 right-0 transition-transform bg-white transform-off shadow-4-ns z-999"
+    id="sidebar">
+    <h1 class="f4 f-2-p print tc">Table des Matières</h1>
+    <div id="nav-no-results" class="tc mv2 dn gray">Aucun Résultat</div>
+    <ul class="ma0 pa0 tl list small-caps">
+    </ul>
+</nav>
+<div class="page"></div>
+<main id="main" class="mw8 center tc" role="main">
+</main>
+<footer id="footer" class="print tc"></footer>
+<a class="no-print fixed pa2 h2 w2 bottom-1 right-1 z-9999 bg-purple br-pill link white dim shadow-4" href="http://github.com/stardisblue/evs-caliop" target="_blank" rel="noopener noreferrer"><svg aria-labelledby="simpleicons-github-icon" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <title id="simpleicons-github-icon">Fork me</title>
+        <path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+        </svg></a>
