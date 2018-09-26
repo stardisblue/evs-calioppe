@@ -30,9 +30,9 @@ kramdown:
   hard_wrap: true
 theme: jekyll-theme-minimal
 collections:
-  files:
+  repertoire:
     output: true
-    permalink: /files/:path/
+    permalink: /repertoire/:path/
 
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list
