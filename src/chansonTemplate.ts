@@ -73,7 +73,7 @@ export default function (chanson: CleanedFileMeta) {
 
     const permalien = document.createElement('a')
     permalien.classList.add('link', 'blue', 'dim', 'mr2')
-    permalien.href = '#t--' + slug
+    permalien.href = '#' + slug
     permalien.innerHTML = '<i class="fas fa-link"></i>'
     p.appendChild(permalien)
 
