@@ -27,8 +27,9 @@ interface CleanedFileMeta extends FileMeta {
 }
 
 // ready(function () {
-const files: CleanedFileMeta[][] = (function (raws: FileMeta[]) {
-    return _.groupBy(_.sortBy(_.map(raws, cleanData), (f) => f.title.toLocaleLowerCase()), (f) => _.first(f.years))
+const { files, keywords } = (function (raws: FileMeta[]) {
+    const keywords = _.sortBy(_.map(raws, cleanData), (f) => f.title.toLocaleLowerCase())
+    return { files: _.groupBy(keywords, (f) => _.first(f.years)), keywords: keywords }
 
     function cleanData(r: FileMeta) {
         const keywords = tokenize(r.title);
@@ -85,6 +86,7 @@ const $main = document.getElementById('main');
 const $navigation = document.querySelector('nav ul');
 const $sidebar = document.getElementById('sidebar');
 const $hamburger = document.getElementById('hamburger');
+const $menuItem = document.getElementById('menu-icon');
 
 (function buildMenu(files, $navigation) {
     // console.log(files)
@@ -110,7 +112,7 @@ const $hamburger = document.getElementById('hamburger');
 })(files, $navigation);
 
 (function buildChanson(files, $main) {
-    _.forEachRight(files, (files, year) => {
+    _.forEachRight(files, (filesYear, year) => {
         const $cont = document.createElement('div')
         $cont.classList.add('w-100', 'pl3')
 
@@ -119,7 +121,7 @@ const $hamburger = document.getElementById('hamburger');
         $year.innerHTML = '' + year
         $cont.appendChild($year)
         $main.appendChild($cont)
-        _.forEach(files, (file) => {
+        _.forEach(filesYear, (file) => {
             // console.log(chanson.title);
             $main.appendChild(chansonTemplate(file));
         })
@@ -214,7 +216,7 @@ const $hamburger = document.getElementById('hamburger');
     $searchInput.addEventListener('focus', (event) => {
         event.preventDefault();
         $sidebar.classList.remove('transform-off')
-        $hamburger.style.transform = 'rotate(90deg)'
+        $menuItem.style.transform = 'rotate(90deg)'
     })
 
     // $searchInput.addEventListener('blur', (event) => {
@@ -222,7 +224,7 @@ const $hamburger = document.getElementById('hamburger');
     //     $hamburger.style.transform = ''
     //     $sidebar.classList.add('transform-off')
     // })
-})(files, $sidebar, $hamburger);
+})(keywords, $sidebar, $hamburger);
 
 
 
@@ -257,10 +259,10 @@ function clickHamburger(event) {
     event.preventDefault();
 
     $sidebar.classList.toggle('transform-off')
-    $hamburger.style.transform = $hamburger.style.transform ? '' : 'rotate(90deg)'
+    $menuItem.style.transform = $menuItem.style.transform ? '' : 'rotate(90deg)'
 }
 
 function outsideClick(event) {
-    $hamburger.style.transform = ''
+    $menuItem.style.transform = ''
     $sidebar.classList.add('transform-off')
 }
