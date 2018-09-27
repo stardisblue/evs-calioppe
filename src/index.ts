@@ -1,5 +1,4 @@
-import forEach from 'lodash/forEach'
-import { filter, map, flatMap, includes, debounce, deburr, intersection, split, sortBy } from 'lodash'
+import _ from 'lodash'
 import chansonTemplate from './chansonTemplate';
 
 
@@ -28,9 +27,11 @@ interface CleanedFileMeta extends FileMeta {
 }
 
 // ready(function () {
-const files: CleanedFileMeta[] = (function (raws: FileMeta[]) {
-    return sortBy(map(raws, (r) => {
-        const keywords = tokenize(r.title)
+const files: CleanedFileMeta[][] = (function (raws: FileMeta[]) {
+    return _.groupBy(_.sortBy(_.map(raws, cleanData), (f) => f.title.toLocaleLowerCase()), (f) => _.first(f.years))
+
+    function cleanData(r: FileMeta) {
+        const keywords = tokenize(r.title);
         const clean: CleanedFileMeta = {
             title: r.title,
             name: r.name,
@@ -41,42 +42,41 @@ const files: CleanedFileMeta[] = (function (raws: FileMeta[]) {
             years: [],
             keywords: keywords,
             evs: 'evs'
-        }
-
-        let datesExtracted = false
+        };
+        let datesExtracted = false;
         let evsCheck = false;
-        forEach(keywords, (str, index) => {
+        _.forEach(keywords, (str, index) => {
             if (!datesExtracted) {
                 if (!isNaN(+str)) {
-                    const num = +str
-                    if (num / 1000 >= 1) clean.years.push('' + num)
-                    else clean.month = '' + str
-                    return
-                } else datesExtracted = true
+                    const num = +str;
+                    if (num / 1000 >= 1)
+                        clean.years.push('' + num);
+                    else
+                        clean.month = '' + str;
+                    return;
+                }
+                else
+                    datesExtracted = true;
             }
-
             if (!evsCheck) {
-                clean.evs = (str === clean.evs) ? clean.evs : ''
-                evsCheck = true
+                clean.evs = (str === clean.evs) ? clean.evs : '';
+                evsCheck = true;
             }
-        })
-
-        clean.years.sort()
-
-        forEach([...clean.years, clean.month, clean.evs], (r) => {
-            if (!r) return
-
-            clean.title = clean.title.replace(r, '')
-        })
-        clean.title = clean.title.trim()
-        clean.name = (clean.evs ? `[${clean.evs.toLocaleUpperCase()}] ` : '') +
-            clean.title +
-            (' (' +
+        });
+        clean.years.sort().reverse();
+        _.forEach([...clean.years, clean.month, clean.evs], (r) => {
+            if (!r)
+                return;
+            clean.title = clean.title.replace(r, '');
+        });
+        clean.title = clean.title.trim();
+        clean.name =
+            ('(' +
                 (clean.month ? clean.month + '-' : '') +
-                clean.years.join(', ') + ')')
-
-        return clean
-    }), [(f)=> f.name.toLocaleLowerCase()])
+                clean.years.join(', ') + ') ') + clean.title +
+            (clean.evs ? ` [${clean.evs.toLocaleUpperCase()}]` : '');
+        return clean;
+    }
 })(window.files || [])
 
 console.log(files)
@@ -87,27 +87,42 @@ const $sidebar = document.getElementById('sidebar');
 const $hamburger = document.getElementById('hamburger');
 
 (function buildMenu(files, $navigation) {
-
     // console.log(files)
-    forEach(files, (chanson) => {
+    _.forEachRight(files, (yearFiles, year) => {
         const $li = document.createElement('li')
-        $li.classList.add('mv2')
-        $li.id = 'nav--' + chanson.slug
-
-        const $url = document.createElement('a')
-        $url.classList.add('link')
-        $url.href = "#t--" + chanson.slug
-        $url.innerHTML = chanson.name
-
-        $li.appendChild($url)
+        $li.classList.add('mv2', 'b', 'underline')
+        $li.innerHTML = '' + year
         $navigation.appendChild($li)
+        _.forEach(yearFiles, (file) => {
+            const $li = document.createElement('li')
+            $li.classList.add('mv2')
+            $li.id = 'nav--' + file.slug
+
+            const $url = document.createElement('a')
+            $url.classList.add('link')
+            $url.href = "#" + file.slug
+            $url.innerHTML = file.name
+
+            $li.appendChild($url)
+            $navigation.appendChild($li)
+        })
     })
 })(files, $navigation);
 
 (function buildChanson(files, $main) {
-    forEach(files, (chanson) => {
-        // console.log(chanson.title);
-        $main.appendChild(chansonTemplate(chanson));
+    _.forEachRight(files, (files, year) => {
+        const $cont = document.createElement('div')
+        $cont.classList.add('w-100', 'pl3')
+
+        const $year = document.createElement('p')
+        $year.classList.add('w-100', 'f2', 'code', 'mv2', 'pl1', 'bb', 'b--light-blue', 'bw1')
+        $year.innerHTML = '' + year
+        $cont.appendChild($year)
+        $main.appendChild($cont)
+        _.forEach(files, (file) => {
+            // console.log(chanson.title);
+            $main.appendChild(chansonTemplate(file));
+        })
     });
 })(files, $main);
 
@@ -117,19 +132,19 @@ const $hamburger = document.getElementById('hamburger');
     const $parents: { [key: string]: HTMLElement } = {}
     const $toc: { [key: string]: HTMLElement } = {}
 
-    forEach(files, (c) => {
-        $parents[c.slug] = document.getElementById(c.slug)
+    _.forEach(files, (c) => {
+        $parents[c.slug] = document.getElementById('a--' + c.slug)
         $toc[c.slug] = document.getElementById('nav--' + c.slug)
     })
 
     const inverted: { [key: string]: string[] } = {}
-    forEach(files, (file) => {
-        forEach(file.keywords, (t) => {
+    _.forEach(files, (file) => {
+        _.forEach(file.keywords, (t) => {
             ; (inverted[t] || (inverted[t] = [])).push(file.slug)
         })
     })
 
-    const searchable = map(inverted, (value, key) => ({ token: key, match: value }))
+    const searchable = _.map(inverted, (value, key) => ({ token: key, match: value }))
 
     function filterDisplay() {
         const tokens = tokenize(this.value)
@@ -140,9 +155,9 @@ const $hamburger = document.getElementById('hamburger');
 
         let results
 
-        forEach(tokens, (t) => {
-            const filtered = flatMap(
-                filter(searchable, (s) => includes(s.token, t)), 'match')
+        _.forEach(tokens, (t) => {
+            const filtered = _.flatMap(
+                _.filter(searchable, (s) => _.includes(s.token, t)), 'match')
 
             if (filtered.length === 0) {
                 results = []
@@ -153,7 +168,7 @@ const $hamburger = document.getElementById('hamburger');
                 return
             }
 
-            results = intersection(results, filtered)
+            results = _.intersection(results, filtered)
         })
 
         if (results.length === 0) {
@@ -163,10 +178,10 @@ const $hamburger = document.getElementById('hamburger');
         }
 
         const displayable: { [key: string]: boolean } = {}
-        forEach(files, (c) => { displayable[c.slug] = false })
-        forEach(results, (r) => { displayable[r] = true })
+        _.forEach(files, (c) => { displayable[c.slug] = false })
+        _.forEach(results, (r) => { displayable[r] = true })
 
-        forEach(displayable, (display, id) => {
+        _.forEach(displayable, (display, id) => {
             const $section = $parents[id].classList
             const $item = $toc[id].classList
             if (display) {
@@ -180,7 +195,7 @@ const $hamburger = document.getElementById('hamburger');
     }
 
     function resetSearch() {
-        forEach(files, (c) => {
+        _.forEach(files, (c) => {
             $parents[c.slug].classList.replace('dn', 'flex');
             $toc[c.slug].classList.remove('dn');
         });
@@ -194,7 +209,7 @@ const $hamburger = document.getElementById('hamburger');
         $searchInput.value = ''
         resetSearch()
     })
-    $searchInput.addEventListener('keydown', debounce(filterDisplay, 300));
+    $searchInput.addEventListener('keydown', _.debounce(filterDisplay, 300));
 
     $searchInput.addEventListener('focus', (event) => {
         event.preventDefault();
@@ -209,6 +224,8 @@ const $hamburger = document.getElementById('hamburger');
     // })
 })(files, $sidebar, $hamburger);
 
+
+
 /* - helper functions - */
 function createFooter(page: number): HTMLDivElement {
     const $div = document.createElement('div')
@@ -219,7 +236,7 @@ function createFooter(page: number): HTMLDivElement {
 }
 
 function tokenize(input) {
-    return filter(split(deburr(input).toLocaleLowerCase(), /[^\w]+/), (t) => t.length >= 2)
+    return _.filter(_.split(_.deburr(input).toLocaleLowerCase(), /[^\w]+/), (t) => t.length >= 2)
 }
 
 

@@ -10,6 +10,9 @@
   user-select: none;
 }
 
+.anchor{
+  visibility: hidden;
+}
 .anchor:target {
   padding-top: 4em;
   margin-top: -4em;
