@@ -1,5 +1,5 @@
 import forEach from 'lodash/forEach'
-import { filter, map, flatMap, includes, debounce, deburr, intersection, split } from 'lodash'
+import { filter, map, flatMap, includes, debounce, deburr, intersection, split, sortBy } from 'lodash'
 import chansonTemplate from './chansonTemplate';
 
 
@@ -11,7 +11,7 @@ function ready(fn) {
     }
 }
 
-interface Chanson {
+interface FileMeta {
     title: string
     name: string
     date?: string
@@ -20,83 +20,116 @@ interface Chanson {
     slug?: string
 }
 
+interface CleanedFileMeta extends FileMeta {
+    years: string[]
+    month?: string
+    keywords: string[]
+    evs?: string
+}
+
 // ready(function () {
-const chansons: Chanson[] = window.chansons || []
+const files: CleanedFileMeta[] = (function (raws: FileMeta[]) {
+    return sortBy(map(raws, (r) => {
+        const keywords = tokenize(r.title)
+        const clean: CleanedFileMeta = {
+            title: r.title,
+            name: r.name,
+            date: r.date,
+            path: r.path,
+            extname: r.extname,
+            slug: r.slug,
+            years: [],
+            keywords: keywords,
+            evs: 'evs'
+        }
+
+        let datesExtracted = false
+        let evsCheck = false;
+        forEach(keywords, (str, index) => {
+            if (!datesExtracted) {
+                if (!isNaN(+str)) {
+                    const num = +str
+                    if (num / 1000 >= 1) clean.years.push('' + num)
+                    else clean.month = '' + str
+                    return
+                } else datesExtracted = true
+            }
+
+            if (!evsCheck) {
+                clean.evs = (str === clean.evs) ? clean.evs : ''
+                evsCheck = true
+            }
+        })
+
+        clean.years.sort()
+
+        forEach([...clean.years, clean.month, clean.evs], (r) => {
+            if (!r) return
+
+            clean.title = clean.title.replace(r, '')
+        })
+        clean.title = clean.title.trim()
+        clean.name = (clean.evs ? `[${clean.evs.toLocaleUpperCase()}] ` : '') +
+            clean.title +
+            (' (' +
+                (clean.month ? clean.month + '-' : '') +
+                clean.years.join(', ') + ')')
+
+        return clean
+    }), [(f)=> f.name.toLocaleLowerCase()])
+})(window.files || [])
+
+console.log(files)
+
 const $main = document.getElementById('main');
 const $navigation = document.querySelector('nav ul');
 const $sidebar = document.getElementById('sidebar');
 const $hamburger = document.getElementById('hamburger');
-const $footer = document.getElementById('footer');
 
-(function buildMenu(chansons) {
+(function buildMenu(files, $navigation) {
 
-    // console.log(chansons)
-    forEach(chansons, (chanson) => {
+    // console.log(files)
+    forEach(files, (chanson) => {
         const $li = document.createElement('li')
-        $li.classList.add('cf', 'mv2')
+        $li.classList.add('mv2')
         $li.id = 'nav--' + chanson.slug
 
         const $url = document.createElement('a')
-        $url.classList.add('fl')
-        $url.href = "#" + chanson.slug
-        $url.innerHTML = chanson.title + (chanson.author ? ' (' + chanson.author + ')' : '')
+        $url.classList.add('link')
+        $url.href = "#t--" + chanson.slug
+        $url.innerHTML = chanson.name
+
         $li.appendChild($url)
         $navigation.appendChild($li)
     })
+})(files, $navigation);
 
-    $footer.appendChild(createFooter(1))
-    $footer.appendChild(createFooter(2))
-})(chansons);
-
-(function buildChanson(chansons) {
-    const pages = [];
-
-    let pageNumber = 3 // we begin at 2 because of titlePage
-    forEach(chansons, (chanson) => {
+(function buildChanson(files, $main) {
+    forEach(files, (chanson) => {
         // console.log(chanson.title);
-        const $chanson = chansonTemplate(chanson);
-
-        $main.appendChild($chanson);
+        $main.appendChild(chansonTemplate(chanson));
     });
+})(files, $main);
 
-    // ---
-    // Adding pageNumber to title
-    // ---
-    const $menu = $navigation.getElementsByTagName('li')
-
-    forEach($menu, ($li, i) => {
-        const $p = document.createElement('i')
-        $p.classList.add('fr', 'print')
-        $p.innerHTML = pages[i]
-        $li.appendChild($p)
-    })
-})(chansons);
-
-(function search(chansons) {
+(function search(files, $sidebar, $hamburger) {
     const $noResults = document.getElementById('nav-no-results')
 
-    const $parents = {}
-    const $toc = {}
+    const $parents: { [key: string]: HTMLElement } = {}
+    const $toc: { [key: string]: HTMLElement } = {}
 
-    forEach(chansons, (c) => {
-        $parents[c.slug] = document.getElementById('parent--' + c.slug)
+    forEach(files, (c) => {
+        $parents[c.slug] = document.getElementById(c.slug)
         $toc[c.slug] = document.getElementById('nav--' + c.slug)
     })
 
     const inverted: { [key: string]: string[] } = {}
-    forEach(chansons, (chanson) => {
-        const tokens: string[] = tokenize(chanson.title)
-        tokens.push(...tokenize(chanson.author))
-        forEach(tokens, (t) => {
-            ; (inverted[t] || (inverted[t] = [])).push(chanson.slug)
+    forEach(files, (file) => {
+        forEach(file.keywords, (t) => {
+            ; (inverted[t] || (inverted[t] = [])).push(file.slug)
         })
     })
 
     const searchable = map(inverted, (value, key) => ({ token: key, match: value }))
-
-    function tokenize(input) {
-        return filter(split(deburr(input).toLocaleLowerCase(), /[^a-z0-9]+/), (t) => t.length >= 2)
-    }
 
     function filterDisplay() {
         const tokens = tokenize(this.value)
@@ -130,25 +163,25 @@ const $footer = document.getElementById('footer');
         }
 
         const displayable: { [key: string]: boolean } = {}
-        forEach(chansons, (c) => { displayable[c.slug] = false })
+        forEach(files, (c) => { displayable[c.slug] = false })
         forEach(results, (r) => { displayable[r] = true })
 
         forEach(displayable, (display, id) => {
             const $section = $parents[id].classList
             const $item = $toc[id].classList
             if (display) {
-                $section.remove('dn')
+                $section.replace('dn', 'flex')
                 $item.remove('dn')
             } else {
-                $section.add('dn')
+                $section.replace('flex', 'dn')
                 $item.add('dn')
             }
         })
     }
 
     function resetSearch() {
-        forEach(chansons, (c) => {
-            $parents[c.slug].classList.remove('dn');
+        forEach(files, (c) => {
+            $parents[c.slug].classList.replace('dn', 'flex');
             $toc[c.slug].classList.remove('dn');
         });
         $noResults.classList.add('dn');
@@ -174,22 +207,9 @@ const $footer = document.getElementById('footer');
     //     $hamburger.style.transform = ''
     //     $sidebar.classList.add('transform-off')
     // })
-})(chansons);
+})(files, $sidebar, $hamburger);
 
 /* - helper functions - */
-function createContainerElement(): HTMLDivElement {
-    const $container = document.createElement('div');
-    $container.classList.add('page', 'cf', 'ph2-ns', 'pb15-ns', 'pb0-p', 'bb-ns-nl', 'b--gray')
-    return $container
-}
-
-function createCellElement(cols): HTMLDivElement {
-    const $cell = document.createElement('div')
-    const percentage = cols !== 3 ? 100 / cols : 'third'
-    $cell.classList.add('fl', 'w-100', 'w-' + percentage + '-ns', 'w-' + percentage + '-p', 'ph1')
-    return $cell
-}
-
 function createFooter(page: number): HTMLDivElement {
     const $div = document.createElement('div')
     $div.classList.add('footer')
@@ -197,6 +217,11 @@ function createFooter(page: number): HTMLDivElement {
     $div.style.bottom = (((page - 1) * -27.2) + 0.01) + 'cm'
     return $div
 }
+
+function tokenize(input) {
+    return filter(split(deburr(input).toLocaleLowerCase(), /[^\w]+/), (t) => t.length >= 2)
+}
+
 
 // console.log(pages)
 
